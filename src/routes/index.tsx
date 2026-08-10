@@ -62,12 +62,21 @@ function Landing() {
       <header className="fixed top-0 z-50 w-full border-b border-border/60 bg-background/80 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">
-            <img
-              src="/vanguarda-logo.svg"
-              alt="Vanguarda Martech"
-              className="h-9 w-auto"
-            />
-            <span className="ml-2 hidden text-sm font-medium tracking-tight text-ink-soft sm:inline">
+            <span className="grid h-9 w-9 place-items-center rounded-md bg-accent-gradient text-primary-foreground">
+              <svg viewBox="0 0 24 24" fill="none" className="h-5 w-5" aria-hidden="true">
+                <path
+                  d="M6 7 L12 18 L18 7"
+                  stroke="currentColor"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="text-base font-semibold tracking-tight text-foreground">
+              Vanguarda<span className="text-primary"> Martech</span>
+            </span>
+            <span className="ml-1 hidden text-sm font-medium tracking-tight text-ink-soft sm:inline">
               Builder
             </span>
           </Link>

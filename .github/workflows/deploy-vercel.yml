@@ -1,0 +1,49 @@
+name: Deploy (Vercel)
+
+# App TanStack Start (SSR + nitro). Build via Vercel CLI usando o preset nitro
+# "vercel" (definido em vercel.json > build.env). Produção no push em main;
+# preview em cada Pull Request.
+#
+# OBS.: Se você usar a integração nativa Git da Vercel (recomendado, deploy
+# automático a cada push/PR), este workflow é OPCIONAL — pode remover.
+#
+# Secrets necessários no repositório (Settings > Secrets and variables > Actions):
+#   VERCEL_TOKEN       -> Account Settings > Tokens
+#   VERCEL_ORG_ID      -> saída de `vercel link` (.vercel/project.json)
+#   VERCEL_PROJECT_ID  -> idem
+# As variáveis de ambiente da APLICAÇÃO (VITE_*, SUPABASE_*, LOVABLE_API_KEY)
+# devem ser configuradas no projeto da Vercel, não aqui.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: vercel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=${{ github.ref == 'refs/heads/main' && 'production' || 'preview' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        run: vercel deploy --prebuilt ${{ github.ref == 'refs/heads/main' && '--prod' || '' }} --token=${{ secrets.VERCEL_TOKEN }}

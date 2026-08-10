@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.enforce_vanguarda_email() FROM PUBLIC, anon, authenticated;

@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://kqdxfrzmtbiyvinrfexj.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "vanguardabuilder",
+      "version": "0.1.0",
+      "title": "VanguardaBuilder"
+    },
+    "tools": [
+      {
+        "name": "list_clients",
+        "title": "Listar clientes",
+        "description": "Lista os clientes da agência com nome, cores de marca e notas.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "create_client",
+        "title": "Criar cliente",
+        "description": "Cria um novo cliente (pasta de projetos) para a agência.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Nome do cliente."
+            },
+            "brand_primary": {
+              "type": "string",
+              "description": "Cor primária da marca (hex)."
+            },
+            "brand_secondary": {
+              "type": "string",
+              "description": "Cor secundária da marca (hex)."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Observações sobre o cliente."
+            }
+          },
+          "required": [
+            "name"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_landing_pages",
+        "title": "Listar landing pages",
+        "description": "Lista as landing pages, opcionalmente filtrando por cliente.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "client_id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "Filtrar por ID do cliente."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_landing_page",
+        "title": "Ver landing page",
+        "description": "Retorna briefing, seções e HTML gerado de uma landing page.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID da landing page."
+            },
+            "include_html": {
+              "type": "boolean",
+              "description": "Incluir o HTML completo (pode ser longo). Padrão: true."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_landing_page_html",
+        "title": "Atualizar HTML da landing page",
+        "description": "Substitui o HTML de uma landing page existente pelo HTML informado.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid",
+              "description": "ID da landing page."
+            },
+            "html": {
+              "type": "string",
+              "description": "HTML completo e autocontido da página."
+            }
+          },
+          "required": [
+            "id",
+            "html"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

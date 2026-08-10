@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -42,11 +41,17 @@ function AuthPage() {
   }
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) {
-        if (redirectTarget) window.location.href = redirectTarget;
-        else navigate({ to: "/dashboard" });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      // Valida o domínio corporativo — cobre também o retorno do OAuth do Google.
+      const userEmail = data.session.user?.email ?? "";
+      if (!isAllowedEmail(userEmail)) {
+        await supabase.auth.signOut();
+        toast.error(`Apenas e-mails ${ALLOWED_DOMAIN} têm acesso.`);
+        return;
       }
+      if (redirectTarget) window.location.href = redirectTarget;
+      else navigate({ to: "/dashboard" });
     });
   }, [navigate, redirectTarget]);
 
@@ -93,28 +98,22 @@ function AuthPage() {
 
   async function handleGoogle() {
     setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: redirectTarget
-        ? `${window.location.origin}${redirectTarget}`
-        : window.location.origin,
+    // OAuth nativo do Supabase (substitui o Lovable Cloud Auth, cujo endpoint
+    // /~oauth/initiate só existe na hospedagem do Lovable e dá 404 no Vercel).
+    // Redireciona ao Google e volta para /auth, onde o useEffect valida o
+    // domínio e encaminha. Requer o provider Google habilitado no projeto
+    // Supabase e as Redirect URLs apontando para o domínio do app.
+    const redirectTo = `${window.location.origin}/auth${
+      redirectTarget ? `?next=${encodeURIComponent(redirectTarget)}` : ""
+    }`;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
     });
-    if (result.error) {
+    if (error) {
       toast.error("Erro ao entrar com Google");
       setLoading(false);
-      return;
     }
-    if (result.redirected) return;
-    // Após retornar do Google, valida o domínio do e-mail
-    const { data } = await supabase.auth.getUser();
-    const userEmail = data.user?.email ?? "";
-    if (!isAllowedEmail(userEmail)) {
-      await supabase.auth.signOut();
-      toast.error(`Apenas e-mails ${ALLOWED_DOMAIN} têm acesso.`);
-      setLoading(false);
-      return;
-    }
-    goAfterAuth();
-
   }
 
 

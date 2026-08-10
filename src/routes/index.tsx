@@ -10,7 +10,6 @@ import {
   Code2,
   Check,
 } from "lucide-react";
-import vanguardaLogo from "@/assets/vanguarda-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -64,7 +63,7 @@ function Landing() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src={vanguardaLogo.url}
+              src="/vanguarda-logo.svg"
               alt="Vanguarda Martech"
               className="h-9 w-auto"
             />

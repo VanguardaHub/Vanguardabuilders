@@ -2,35 +2,22 @@
 
 Objetivo: sair do Supabase do Lovable Cloud (`kqdxfrzmtbiyvinrfexj`) e passar o backend para um projeto **próprio** na org `jussaracavalcante-sketch's Org` (`loqttoauenrycokebmrl`), região `sa-east-1`, nome `vanguarda-builder`.
 
-> **Status atual (10/08/2026):** a criação do projeto está **bloqueada** por `PaymentRequiredException` — faturas em aberto na org **VTech**. Nada abaixo pode rodar até isso ser quitado. Assim que o billing sair, posso executar os passos 1–4 via ferramentas Supabase (MCP) automaticamente; os passos 5–7 são no painel da Vercel / Supabase / Google.
+> **Status (11/08/2026): projeto criado ✅.** Billing regularizado; passos 1–3 executados via ferramentas Supabase. Faltam os passos 4–5 (Google OAuth + envs na Vercel) e a verificação.
+>
+> **Projeto:** `vanguarda-builder` · **ref `ybfyhemmsmzofvmhphrn`** · região sa-east-1 · status ACTIVE_HEALTHY
+> **Project URL:** `https://ybfyhemmsmzofvmhphrn.supabase.co`
+> **Publishable key:** `sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD` (anon legacy JWT também disponível)
+> **service_role:** pegar no painel → Settings → API (segredo; nunca versionar/expor no client)
+> Advisors de segurança: **0 alertas**.
 
-## Pré-requisito
-- [ ] Quitar as faturas da org **VTech** em `https://supabase.com/dashboard/org/_/invoices`.
+## 1. Criar o projeto — ✅ FEITO
+`vanguarda-builder` · org `loqttoauenrycokebmrl` · região `sa-east-1` · US$ 0/mês. Ref `ybfyhemmsmzofvmhphrn`.
 
-## 1. Criar o projeto
-`vanguarda-builder` · org `loqttoauenrycokebmrl` · região `sa-east-1` · custo US$ 0/mês (free tier).
-Capturar após criar: **Project URL**, **ref**, **anon/publishable key**, **service_role key**, **senha do banco**.
+## 2. Aplicar o schema — ✅ FEITO
+As 8 migrations de `supabase/migrations/` foram aplicadas na ordem original (versões preservadas, então um `supabase db push` futuro as reconhece como já aplicadas). Criou: `profiles`, `clients`, `landing_pages` (3 tabelas, 11 policies), triggers `updated_at`/`handle_new_user`/`enforce_vanguarda_email`, e as 4 políticas de Storage.
 
-## 2. Aplicar o schema (as 8 migrations de `supabase/migrations/`)
-Duas opções — o resultado é o mesmo:
-
-**a) Supabase CLI (recomendado):**
-```bash
-supabase link --project-ref <NOVO_REF>
-supabase db push
-```
-**b) Via ferramentas MCP:** aplico cada migration na ordem cronológica (posso fazer isso por aqui assim que o projeto existir).
-
-O schema cria: `profiles`, `clients`, `landing_pages`; RLS (leitura da agência, escrita do dono); triggers `updated_at`, `handle_new_user`, `enforce_vanguarda_email` (restringe cadastro a `@vanguardamartech.com.br`); e as **políticas de Storage** do bucket `project-materials`.
-
-## 3. Criar o bucket de Storage (NÃO está nas migrations)
-As políticas existem, mas o bucket precisa ser criado (privado). No SQL editor do projeto novo:
-```sql
-insert into storage.buckets (id, name, public)
-values ('project-materials', 'project-materials', false)
-on conflict (id) do nothing;
-```
-(As 4 políticas de `storage.objects` já vêm da migration `20260625185746`, isolando por pasta = `auth.uid()`.)
+## 3. Bucket de Storage `project-materials` — ✅ FEITO
+Criado privado. As 4 políticas (isolando por pasta = `auth.uid()`) vieram da migration `20260625185746`.
 
 ## 4. Auth
 - **Providers → Google:** habilitar e preencher Client ID / Secret (do Google Cloud Console).
@@ -43,12 +30,12 @@ on conflict (id) do nothing;
 ## 5. Apontar a Vercel para o projeto novo
 Em Project Settings → Environment Variables (Production **e** Preview), trocar os valores para o projeto novo:
 ```
-VITE_SUPABASE_URL=https://<NOVO_REF>.supabase.co
-VITE_SUPABASE_PUBLISHABLE_KEY=<anon/publishable do projeto novo>
-VITE_SUPABASE_PROJECT_ID=<NOVO_REF>
-SUPABASE_URL=https://<NOVO_REF>.supabase.co
-SUPABASE_PUBLISHABLE_KEY=<anon/publishable do projeto novo>
-SUPABASE_SERVICE_ROLE_KEY=<service_role do projeto novo>   # segredo — nunca em VITE_
+VITE_SUPABASE_URL=https://ybfyhemmsmzofvmhphrn.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD
+VITE_SUPABASE_PROJECT_ID=ybfyhemmsmzofvmhphrn
+SUPABASE_URL=https://ybfyhemmsmzofvmhphrn.supabase.co
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD
+SUPABASE_SERVICE_ROLE_KEY=<pegar em Settings → API>   # segredo — nunca em VITE_
 LOVABLE_API_KEY=<mantém, ou trocar pelo gateway de IA escolhido>
 ```
 Depois: **Redeploy** na Vercel para reconstruir com as novas envs (as `VITE_*` são embutidas em build).

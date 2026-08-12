@@ -271,9 +271,9 @@ function NewProjectDialog({
   const [vkbLink, setVkbLink] = useState("");
   const [vkbAsset, setVkbAsset] = useState<Asset | null>(null);
   const [vkbUploading, setVkbUploading] = useState(false);
-  const [model, setModel] = useState<
-    "gemini-flash" | "gemini-pro" | "gpt-5" | "gpt-5-mini"
-  >("gemini-flash");
+  const [model, setModel] = useState<"gemini-flash" | "gemini-pro">(
+    "gemini-flash",
+  );
 
   const qc = useQueryClient();
   const createFn = useServerFn(createLandingPage);
@@ -635,16 +635,12 @@ function NewProjectDialog({
               className="mt-1.5 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
             >
               <optgroup label="Google Gemini">
-                <option value="gemini-flash">Gemini 3 Flash — rápido (padrão)</option>
-                <option value="gemini-pro">Gemini 3.1 Pro — qualidade máxima</option>
-              </optgroup>
-              <optgroup label="OpenAI ChatGPT">
-                <option value="gpt-5-mini">ChatGPT 5 Mini — rápido</option>
-                <option value="gpt-5">ChatGPT 5 — qualidade máxima</option>
+                <option value="gemini-flash">Gemini Flash — rápido (padrão)</option>
+                <option value="gemini-pro">Gemini Pro — qualidade máxima</option>
               </optgroup>
             </select>
             <p className="mt-1 text-xs text-ink-soft">
-              Gemini lê imagens, GIFs e PDFs. ChatGPT lê imagens e PDFs.
+              Gemini lê imagens, GIFs e PDFs.
             </p>
           </div>
 

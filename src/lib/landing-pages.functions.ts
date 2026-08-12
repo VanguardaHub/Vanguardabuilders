@@ -10,11 +10,11 @@ const AssetRef = z.object({
 });
 export type AssetRefT = z.infer<typeof AssetRef>;
 
+// Google Gemini via endpoint compatível com OpenAI (tier gratuito do AI Studio).
+// Aliases "-latest" apontam sempre para a versão GA atual do Flash/Pro.
 export const AI_MODELS = {
-  "gemini-flash": { id: "google/gemini-3-flash-preview", label: "Gemini 3 Flash (rápido)" },
-  "gemini-pro": { id: "google/gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (qualidade)" },
-  "gpt-5": { id: "openai/gpt-5", label: "ChatGPT 5 (qualidade)" },
-  "gpt-5-mini": { id: "openai/gpt-5-mini", label: "ChatGPT 5 Mini (rápido)" },
+  "gemini-flash": { id: "gemini-flash-latest", label: "Gemini Flash (rápido)" },
+  "gemini-pro": { id: "gemini-pro-latest", label: "Gemini Pro (qualidade)" },
 } as const;
 export type AiModelKey = keyof typeof AI_MODELS;
 
@@ -27,7 +27,7 @@ const CreateInput = z.object({
   referencesText: z.string().max(20_000).optional().nullable(),
   links: z.array(z.string().url()).optional().nullable(),
   assets: z.array(AssetRef).optional().nullable(),
-  model: z.enum(["gemini-flash", "gemini-pro", "gpt-5", "gpt-5-mini"]).optional(),
+  model: z.enum(["gemini-flash", "gemini-pro"]).optional(),
 });
 
 
@@ -113,7 +113,7 @@ export const createLandingPage = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const key = process.env.OPENROUTER_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
     if (!key) {
       await context.supabase
         .from("landing_pages")
@@ -232,13 +232,11 @@ ${data.briefing}${
         }
       }
 
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${key}`,
-          "HTTP-Referer": "https://vanguardabuilders.vercel.app",
-          "X-Title": "Vanguarda Builder",
         },
         body: JSON.stringify({
           model: AI_MODELS[data.model ?? "gemini-flash"].id,
@@ -323,7 +321,7 @@ export const regenerateLandingPageHtml = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!page) throw new Error("Página não encontrada");
-    const key = process.env.OPENROUTER_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("Chave de IA não configurada");
 
     const c = (page.client ?? {}) as {
@@ -348,13 +346,11 @@ export const regenerateLandingPageHtml = createServerFn({ method: "POST" })
       sections,
     });
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${key}`,
-        "HTTP-Referer": "https://vanguardabuilders.vercel.app",
-        "X-Title": "Vanguarda Builder",
       },
       body: JSON.stringify({
         model: AI_MODELS["gemini-flash"].id,
@@ -387,7 +383,7 @@ const EditInput = z.object({
   id: z.string().uuid(),
   instruction: z.string().min(3).max(4000),
   assets: z.array(AssetRef).optional().nullable(),
-  model: z.enum(["gemini-flash", "gemini-pro", "gpt-5", "gpt-5-mini"]).optional(),
+  model: z.enum(["gemini-flash", "gemini-pro"]).optional(),
 });
 
 export const editLandingPageWithAI = createServerFn({ method: "POST" })
@@ -401,7 +397,7 @@ export const editLandingPageWithAI = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!page) throw new Error("Página não encontrada");
-    const key = process.env.OPENROUTER_API_KEY;
+    const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("Chave de IA não configurada");
 
     const currentHtml = (page.html_output as string | null) ?? "";
@@ -441,13 +437,11 @@ export const editLandingPageWithAI = createServerFn({ method: "POST" })
       if (a.kind === "image") userContent.push({ type: "image_url", image_url: { url } });
     }
 
-    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${key}`,
-        "HTTP-Referer": "https://vanguardabuilders.vercel.app",
-        "X-Title": "Vanguarda Builder",
       },
       body: JSON.stringify({
         model: AI_MODELS[data.model ?? "gemini-flash"].id,

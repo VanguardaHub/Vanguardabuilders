@@ -36,7 +36,7 @@ VITE_SUPABASE_PROJECT_ID=ybfyhemmsmzofvmhphrn
 SUPABASE_URL=https://ybfyhemmsmzofvmhphrn.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD
 SUPABASE_SERVICE_ROLE_KEY=<pegar em Settings → API>   # segredo — nunca em VITE_
-OPENROUTER_API_KEY=<chave da OpenRouter>              # segredo — geração de landing pages via IA
+GEMINI_API_KEY=<chave do Google AI Studio>           # segredo — geração de landing pages via IA (tier grátis)
 ```
 Depois: **Redeploy** na Vercel para reconstruir com as novas envs (as `VITE_*` são embutidas em build).
 

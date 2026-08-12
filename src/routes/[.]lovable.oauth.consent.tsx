@@ -16,7 +16,10 @@ type OAuthApi = {
   denyAuthorization: (id: string) => Promise<{ data: OAuthDetails | null; error: Error | null }>;
 };
 
-const oauth = (supabase.auth as unknown as { oauth: OAuthApi }).oauth;
+// Lazy: acessar supabase.auth no topo do módulo cria o client no carregamento
+// (SSR) e quebra o app inteiro se a URL não estiver disponível nesse contexto.
+// Esta rota é ssr:false, então só precisamos do client em runtime no cliente.
+const getOAuth = () => (supabase.auth as unknown as { oauth: OAuthApi }).oauth;
 
 export const Route = createFileRoute("/.lovable/oauth/consent")({
   ssr: false,
@@ -31,7 +34,7 @@ export const Route = createFileRoute("/.lovable/oauth/consent")({
   },
   loader: async ({ location }) => {
     const authorizationId = new URLSearchParams(location.search).get("authorization_id")!;
-    const { data, error } = await oauth.getAuthorizationDetails(authorizationId);
+    const { data, error } = await getOAuth().getAuthorizationDetails(authorizationId);
     if (error) throw error;
     const immediate = data?.redirect_url ?? data?.redirect_to;
     if (immediate && !data?.client) throw redirect({ href: immediate });
@@ -57,8 +60,8 @@ function Consent() {
     setBusy(true);
     setError(null);
     const { data, error } = approve
-      ? await oauth.approveAuthorization(authorization_id)
-      : await oauth.denyAuthorization(authorization_id);
+      ? await getOAuth().approveAuthorization(authorization_id)
+      : await getOAuth().denyAuthorization(authorization_id);
     if (error) {
       setBusy(false);
       setError(error.message);

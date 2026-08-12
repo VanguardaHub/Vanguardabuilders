@@ -113,7 +113,7 @@ export const createLandingPage = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.OPENROUTER_API_KEY;
     if (!key) {
       await context.supabase
         .from("landing_pages")
@@ -232,11 +232,13 @@ ${data.briefing}${
         }
       }
 
-      const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Lovable-API-Key": key,
+          Authorization: `Bearer ${key}`,
+          "HTTP-Referer": "https://vanguardabuilders.vercel.app",
+          "X-Title": "Vanguarda Builder",
         },
         body: JSON.stringify({
           model: AI_MODELS[data.model ?? "gemini-flash"].id,
@@ -321,7 +323,7 @@ export const regenerateLandingPageHtml = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!page) throw new Error("Página não encontrada");
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.OPENROUTER_API_KEY;
     if (!key) throw new Error("Chave de IA não configurada");
 
     const c = (page.client ?? {}) as {
@@ -346,9 +348,14 @@ export const regenerateLandingPageHtml = createServerFn({ method: "POST" })
       sections,
     });
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "HTTP-Referer": "https://vanguardabuilders.vercel.app",
+        "X-Title": "Vanguarda Builder",
+      },
       body: JSON.stringify({
         model: AI_MODELS["gemini-flash"].id,
         messages: [
@@ -394,7 +401,7 @@ export const editLandingPageWithAI = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!page) throw new Error("Página não encontrada");
-    const key = process.env.LOVABLE_API_KEY;
+    const key = process.env.OPENROUTER_API_KEY;
     if (!key) throw new Error("Chave de IA não configurada");
 
     const currentHtml = (page.html_output as string | null) ?? "";
@@ -434,9 +441,14 @@ export const editLandingPageWithAI = createServerFn({ method: "POST" })
       if (a.kind === "image") userContent.push({ type: "image_url", image_url: { url } });
     }
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "HTTP-Referer": "https://vanguardabuilders.vercel.app",
+        "X-Title": "Vanguarda Builder",
+      },
       body: JSON.stringify({
         model: AI_MODELS[data.model ?? "gemini-flash"].id,
         messages: [

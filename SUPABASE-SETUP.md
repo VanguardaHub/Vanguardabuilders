@@ -36,15 +36,15 @@ VITE_SUPABASE_PROJECT_ID=ybfyhemmsmzofvmhphrn
 SUPABASE_URL=https://ybfyhemmsmzofvmhphrn.supabase.co
 SUPABASE_PUBLISHABLE_KEY=sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD
 SUPABASE_SERVICE_ROLE_KEY=<pegar em Settings → API>   # segredo — nunca em VITE_
-LOVABLE_API_KEY=<mantém, ou trocar pelo gateway de IA escolhido>
+OPENROUTER_API_KEY=<chave da OpenRouter>              # segredo — geração de landing pages via IA
 ```
 Depois: **Redeploy** na Vercel para reconstruir com as novas envs (as `VITE_*` são embutidas em build).
 
-## 6. Dados existentes (opcional)
-As migrations recriam apenas o **schema**, não os dados. Se quiser trazer clientes/páginas/usuários do projeto do Lovable (`kqdxfrzmtbiyvinrfexj`):
-- Requer acesso ao banco de origem (credenciais do projeto Lovable).
-- `pg_dump` (só dados: `--data-only --disable-triggers`) do origem → `psql`/restore no destino.
-- Usuários (`auth.users`) exigem cuidado extra (migração de auth). Se o time for pequeno, pode ser mais simples recadastrar.
+## 6. Dados existentes — ✅ migrados (2026-08-12)
+Os dados do projeto Lovable de origem (`kqdxfrzmtbiyvinrfexj` / `7c58b586-...`) já foram trazidos para o projeto novo via MCP do Lovable:
+- **auth.users** (2) + **auth.identities** (3, Google + email) — mesmos IDs, login preservado.
+- **profiles** (2), **clients** (3), **landing_pages** (2, com HTML e assets).
+- **storage** `project-materials` — 4 arquivos (3 PDFs + 1 logo), caminhos exatos preservados.
 
 ## 7. Verificação (go-live)
 - [ ] Login e-mail/senha e Google (Google exige passo 4 completo)

@@ -47,6 +47,64 @@ function classifyAsset(mime: string): "pdf" | "doc" | "image" | "video" | "audio
   return "other";
 }
 
+// --- Google Gemini (API nativa generateContent) ---------------------------
+// O endpoint compatível-OpenAI do Google rejeita partes do tipo "file" (PDF),
+// então usamos a API nativa, que aceita imagens E PDFs inline (base64) via
+// inlineData — preservando a leitura multimodal (mesma capacidade do gateway
+// anterior).
+type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+async function fetchAsBase64(
+  url: string,
+  maxBytes = 15 * 1024 * 1024,
+): Promise<string | null> {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const buf = new Uint8Array(await r.arrayBuffer());
+    if (buf.byteLength > maxBytes) return null;
+    let bin = "";
+    const chunk = 0x8000;
+    for (let i = 0; i < buf.length; i += chunk) {
+      bin += String.fromCharCode.apply(null, Array.from(buf.subarray(i, i + chunk)));
+    }
+    return btoa(bin);
+  } catch {
+    return null;
+  }
+}
+
+async function callGeminiJSON(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  parts: GeminiPart[],
+): Promise<string> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: "user", parts }],
+        generationConfig: { responseMimeType: "application/json" },
+      }),
+    },
+  );
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(`IA retornou ${res.status}: ${t.slice(0, 300)}`);
+  }
+  const json = (await res.json()) as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+  };
+  const text =
+    json.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+  if (!text) throw new Error("IA não retornou conteúdo.");
+  return text;
+}
+
 export const listLandingPages = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -179,7 +237,7 @@ REGRAS DO CAMPO html (OBRIGATÓRIO):
 - Se houver imagens/GIFs nas referências, use as URLs entregues em \\"MÍDIA EMBUTÍVEL\\" abaixo via <img src=...>.
 - NÃO use frameworks JS, NÃO use lorem ipsum, NÃO deixe placeholders — escreva copy real baseada no briefing.`;
 
-      const userContent: Array<Record<string, unknown>> = [];
+      const parts: GeminiPart[] = [];
 
       const briefingBlock = `BRIEFING DO PROJETO:
 Título: ${data.title}
@@ -196,67 +254,25 @@ ${data.briefing}${
           : ""
       }${mediaSummary}${embedBlock}`;
 
-      userContent.push({ type: "text", text: briefingBlock });
+      parts.push({ text: briefingBlock });
 
-      // Attach images & GIFs as image_url, PDFs/docs as file blocks via signed URL
+      // Anexa imagens/GIFs e PDFs/docs como inlineData (base64) para leitura
+      // multimodal nativa do Gemini.
       for (const a of classified) {
         const url = signedByPath.get(a.path);
         if (!url) continue;
-        if (a.kind === "image") {
-          userContent.push({ type: "image_url", image_url: { url } });
-        } else if (a.kind === "pdf" || a.kind === "doc") {
-          try {
-            const r = await fetch(url);
-            if (!r.ok) continue;
-            const buf = new Uint8Array(await r.arrayBuffer());
-            if (buf.byteLength > 15 * 1024 * 1024) continue; // skip >15MB
-            let bin = "";
-            const chunk = 0x8000;
-            for (let i = 0; i < buf.length; i += chunk) {
-              bin += String.fromCharCode.apply(
-                null,
-                Array.from(buf.subarray(i, i + chunk)),
-              );
-            }
-            const b64 = btoa(bin);
-            userContent.push({
-              type: "file",
-              file: {
-                filename: a.filename,
-                file_data: `data:${a.mime};base64,${b64}`,
-              },
-            });
-          } catch {
-            // ignore individual file failures
-          }
+        if (a.kind === "image" || a.kind === "pdf" || a.kind === "doc") {
+          const b64 = await fetchAsBase64(url);
+          if (b64) parts.push({ inlineData: { mimeType: a.mime, data: b64 } });
         }
       }
 
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          model: AI_MODELS[data.model ?? "gemini-flash"].id,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userContent },
-          ],
-          response_format: { type: "json_object" },
-        }),
-      });
-
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`IA retornou ${res.status}: ${errText.slice(0, 300)}`);
-      }
-      const json = (await res.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-      const content = json.choices?.[0]?.message?.content ?? "";
+      const content = await callGeminiJSON(
+        key,
+        AI_MODELS[data.model ?? "gemini-flash"].id,
+        systemPrompt,
+        parts,
+      );
       const parsed = JSON.parse(content);
 
       const SectionsSchema = z.object({
@@ -346,27 +362,12 @@ export const regenerateLandingPageHtml = createServerFn({ method: "POST" })
       sections,
     });
 
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: AI_MODELS["gemini-flash"].id,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPayload },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`IA retornou ${res.status}: ${t.slice(0, 300)}`);
-    }
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const content = json.choices?.[0]?.message?.content ?? "";
+    const content = await callGeminiJSON(
+      key,
+      AI_MODELS["gemini-flash"].id,
+      systemPrompt,
+      [{ text: userPayload }],
+    );
     const parsed = z.object({ html: z.string().min(200) }).parse(JSON.parse(content));
 
     const { data: updated, error: upErr } = await context.supabase
@@ -425,39 +426,26 @@ export const editLandingPageWithAI = createServerFn({ method: "POST" })
 
     const systemPrompt = `Você é dev front-end sênior editando uma landing page existente. Receba o HTML atual e uma instrução de ajuste. Retorne o HTML COMPLETO atualizado (documento HTML inteiro, auto-contido, Tailwind via CDN, Google Fonts, responsivo). Preserve tudo que não foi pedido para mudar. Aplique a instrução com precisão. Responda APENAS com JSON: {"html":"<!doctype html>..."} sem markdown.`;
 
-    const userContent: Array<Record<string, unknown>> = [
+    const parts: GeminiPart[] = [
       {
-        type: "text",
         text: `INSTRUÇÃO DE AJUSTE:\n${data.instruction}${embedBlock}\n\nHTML ATUAL (mantenha estrutura e edite conforme a instrução):\n\n${currentHtml}`,
       },
     ];
     for (const a of classified) {
       const url = signedByPath.get(a.path);
       if (!url) continue;
-      if (a.kind === "image") userContent.push({ type: "image_url", image_url: { url } });
+      if (a.kind === "image" || a.kind === "pdf" || a.kind === "doc") {
+        const b64 = await fetchAsBase64(url);
+        if (b64) parts.push({ inlineData: { mimeType: a.mime, data: b64 } });
+      }
     }
 
-    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/openai/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-      },
-      body: JSON.stringify({
-        model: AI_MODELS[data.model ?? "gemini-flash"].id,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userContent },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (!res.ok) {
-      const t = await res.text();
-      throw new Error(`IA retornou ${res.status}: ${t.slice(0, 300)}`);
-    }
-    const json = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
-    const content = json.choices?.[0]?.message?.content ?? "";
+    const content = await callGeminiJSON(
+      key,
+      AI_MODELS[data.model ?? "gemini-flash"].id,
+      systemPrompt,
+      parts,
+    );
     const parsed = z.object({ html: z.string().min(200) }).parse(JSON.parse(content));
 
     const mergedAssets = [

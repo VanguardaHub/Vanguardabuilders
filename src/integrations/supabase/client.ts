@@ -27,18 +27,44 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 
 
+// Fallbacks públicos do projeto novo (URL + publishable/anon são valores
+// públicos, já embutidos no bundle). Segredos (service_role) NUNCA ficam aqui.
+const FALLBACK_SUPABASE_URL = 'https://ybfyhemmsmzofvmhphrn.supabase.co';
+const FALLBACK_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD';
+
+// Valida a URL: precisa ser uma string http(s) válida. Um valor inválido
+// mas NÃO vazio (ex.: env errada embutida no build do Vercel) passaria por um
+// `||` simples e quebraria o createClient com "Invalid supabaseUrl". Aqui
+// caímos no fallback quando a env está ausente OU inválida.
+function resolveSupabaseUrl(...candidates: Array<string | undefined>): string {
+  for (const value of candidates) {
+    if (typeof value === 'string' && /^https?:\/\/[^\s]+$/.test(value.trim())) {
+      return value.trim();
+    }
+  }
+  return FALLBACK_SUPABASE_URL;
+}
+
+function resolveSupabaseKey(...candidates: Array<string | undefined>): string {
+  for (const value of candidates) {
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim();
+    }
+  }
+  return FALLBACK_SUPABASE_PUBLISHABLE_KEY;
+}
+
 function createSupabaseClient() {
   // Use import.meta.env for client-side (Vite build-time replacement)
   // Fall back to process.env for SSR (server-side rendering)
-  // Fallback público (URL + publishable/anon são valores públicos, já embutidos
-  // no bundle) para o projeto novo, garantindo funcionamento mesmo se o build
-  // não injetar as envs. Segredos (service_role) NUNCA ficam aqui.
-  const SUPABASE_URL =
-    import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || 'https://ybfyhemmsmzofvmhphrn.supabase.co';
-  const SUPABASE_PUBLISHABLE_KEY =
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-    process.env.SUPABASE_PUBLISHABLE_KEY ||
-    'sb_publishable_5Fdym3PcNtP_ot_sZLGPjA_NZ6YezLD';
+  const SUPABASE_URL = resolveSupabaseUrl(
+    import.meta.env.VITE_SUPABASE_URL,
+    process.env.SUPABASE_URL,
+  );
+  const SUPABASE_PUBLISHABLE_KEY = resolveSupabaseKey(
+    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+    process.env.SUPABASE_PUBLISHABLE_KEY,
+  );
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
